@@ -10,5 +10,5 @@ export class ItemDTO {
     name: string;
     @IsNumber()
     @IsNotEmpty()
-    quantity: number;
+    quantity: number=1;
   }

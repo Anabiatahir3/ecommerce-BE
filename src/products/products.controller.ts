@@ -29,9 +29,4 @@ export class ProductsController {
     getOneProduct(@Query('name')name:string){
         return this.productService.findProductByName(name)
     }
-
-
-    
-
-
 }
