@@ -53,7 +53,7 @@ async deleteCart(userId: number): Promise<void> {
           const item = cart.items.find((item) => item.product.id === productId);
           if (item) {
             item.quantity += quantity;
-            item.subTotalPrice = subTotalPrice;
+            item.subTotalPrice = item.quantity *product.price;
             this.ItemRepository.save(item)
             this.CartRepository.save(cart)
           } else {
