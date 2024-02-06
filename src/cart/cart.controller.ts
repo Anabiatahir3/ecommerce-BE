@@ -30,10 +30,17 @@ async getUserCart(@Request()req){
         const cart=await this.cartService.removeItemFromCart(userId,productId)
         return cart
     }
+    @Delete('/single')
+    async removeItem(@Request()req, @Body() {productId}){
+        const userId=req.user.userId
+        const cart=await this.cartService.removeSingleItemFromCart(userId,productId)
+        return cart
+    }
     
 
-    @Delete('/:id')
-  async deleteCart(@Param('id') userId: number) {
+    @Delete('/all')
+  async deleteCart(@Request()req ) {
+    const userId=req.user.userId
     const cart = await this.cartService.deleteCart(userId);
     return cart;
   }

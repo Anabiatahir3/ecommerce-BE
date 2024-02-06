@@ -87,6 +87,7 @@ async deleteCart(userId: number): Promise<void> {
           return newCart
         }
       }
+    
       
     async removeItemFromCart(userId: number, productId: number) {
       const user = await this.UserRepository.findOneBy({ id: userId });
@@ -105,4 +106,36 @@ async deleteCart(userId: number): Promise<void> {
     }
     }
    
+
+    async removeSingleItemFromCart(userId: number, productId: number): Promise<Cart> {
+      const user = await this.UserRepository.findOneBy({ id: userId });
+      let cart: Cart = await this.CartRepository.findOne({ where: { user: user }, relations: ['items', 'items.product'] });
+    
+      if (cart) {
+        const itemToRemove = cart.items.find((item) => item.product.id === productId);
+    
+        if (itemToRemove) {
+          if (itemToRemove.quantity > 1) {
+            // If quantity is greater than 1, reduce the quantity
+            itemToRemove.quantity--;
+            itemToRemove.subTotalPrice = itemToRemove.quantity * itemToRemove.product.price;
+            this.ItemRepository.save(itemToRemove);
+          } else {
+            // If quantity is 1, remove the item from the cart
+            const itemIndex = cart.items.indexOf(itemToRemove);
+            cart.items.splice(itemIndex, 1);
+            this.ItemRepository.remove(itemToRemove);
+          }
+    
+          this.recalculateCart(cart);
+          return this.CartRepository.save(cart);
+        } else {
+          // Handle case where item is not found in the cart
+          throw new NotFoundException(`Item with product ID ${productId} not found in the cart`);
+        }
+      } else {
+        // Handle case where cart is not found
+        throw new NotFoundException(`Cart not found for user with ID ${userId}`);
+      }
+    }
 }
