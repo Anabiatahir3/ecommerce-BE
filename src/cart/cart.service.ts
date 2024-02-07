@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cart } from './entities/cart.entity';
 import { Repository } from 'typeorm';
@@ -7,6 +7,10 @@ import { User } from 'src/users/entities/user.entity';
 import { BadRequestException,NotFoundException } from '@nestjs/common/exceptions';
 import { Item } from './entities/item.entity';
 import { Product } from 'src/products/entitites/product.entity';
+import { PurchaseDto } from 'src/dtos/cart/purchaseCart.dto';
+import { Transaction } from './entities/transaction.entity';
+import { HttpService } from '@nestjs/axios/dist';
+import { map ,tap} from 'rxjs';
 
 @Injectable()
 export class CartService {
@@ -14,18 +18,21 @@ export class CartService {
         @InjectRepository(Cart) private CartRepository :Repository<Cart>,
         @InjectRepository(User) private UserRepository:Repository<User>,
         @InjectRepository(Item) private ItemRepository:Repository<Item>,
-        @InjectRepository(Product) private ProductRepository:Repository<Product>,){
+        @InjectRepository(Product) private ProductRepository:Repository<Product>,
+        @InjectRepository(Transaction) private TransactionRepository:Repository<Transaction>,
+        private httpService:HttpService)
+        {
     }
   
   async getCart(userId:number):Promise<Cart>{
     const user=await this.UserRepository.findOneBy({id:userId})
-    const cart =await this.CartRepository.findOne({where:{user},relations:['items',"items.product"]})
+    const cart =await this.CartRepository.findOne({where:{user,purchased:false},relations:['items',"items.product"]})
     return cart
   }
 
 async deleteCart(userId: number): Promise<void> {
   const user = await this.UserRepository.findOneBy({ id: userId });
-  const cart = await this.CartRepository.findOne({ where: { user }, relations: ['items'] });
+  const cart = await this.CartRepository.findOne({ where: { user,purchased:false }, relations: ['items'] });
 
   if (!cart) {
     throw new NotFoundException(`Cart not found for user with ID ${userId}`);
@@ -48,7 +55,7 @@ async deleteCart(userId: number): Promise<void> {
         const product = await this.ProductRepository.findOneBy({ id: productId });
         const user = await this.UserRepository.findOneBy({ id: userId });
         const subTotalPrice = quantity * product.price;
-        let cart: Cart = await this.CartRepository.findOne({where:{user:user},relations:['items','items.product']})
+        let cart: Cart = await this.CartRepository.findOne({where:{user,purchased:false},relations:['items','items.product']})
         if (cart) {
           const item = cart.items.find((item) => item.product.id === productId);
           if (item) {
@@ -80,6 +87,7 @@ async deleteCart(userId: number): Promise<void> {
             user,
             items:[newItem],
             totalPrice: subTotalPrice,
+            purchased:false
           });
           this.CartRepository.save(newCart);
           newItem.cart=newCart
@@ -91,7 +99,7 @@ async deleteCart(userId: number): Promise<void> {
       
     async removeItemFromCart(userId: number, productId: number) {
       const user = await this.UserRepository.findOneBy({ id: userId });
-      let cart: Cart = await this.CartRepository.findOne({where:{user:user},relations:['items','items.product']})
+      let cart: Cart = await this.CartRepository.findOne({where:{user,purchased:false},relations:['items','items.product']})
       if (!cart) {
           throw new NotFoundException(`Cart not found for user with ID ${userId}`);
         }
@@ -109,19 +117,19 @@ async deleteCart(userId: number): Promise<void> {
 
     async removeSingleItemFromCart(userId: number, productId: number): Promise<Cart> {
       const user = await this.UserRepository.findOneBy({ id: userId });
-      let cart: Cart = await this.CartRepository.findOne({ where: { user: user }, relations: ['items', 'items.product'] });
+      let cart: Cart = await this.CartRepository.findOne({ where: { user,purchased:false }, relations: ['items', 'items.product'] });
     
       if (cart) {
         const itemToRemove = cart.items.find((item) => item.product.id === productId);
     
         if (itemToRemove) {
           if (itemToRemove.quantity > 1) {
-            // If quantity is greater than 1, reduce the quantity
+            // If quantity is greater than 1, reducing quantity
             itemToRemove.quantity--;
             itemToRemove.subTotalPrice = itemToRemove.quantity * itemToRemove.product.price;
             this.ItemRepository.save(itemToRemove);
           } else {
-            // If quantity is 1, remove the item from the cart
+            // If quantity 1, remove the item from cart
             const itemIndex = cart.items.indexOf(itemToRemove);
             cart.items.splice(itemIndex, 1);
             this.ItemRepository.remove(itemToRemove);
@@ -130,12 +138,47 @@ async deleteCart(userId: number): Promise<void> {
           this.recalculateCart(cart);
           return this.CartRepository.save(cart);
         } else {
-          // Handle case where item is not found in the cart
+          // when item is not found in the cart
           throw new NotFoundException(`Item with product ID ${productId} not found in the cart`);
         }
       } else {
-        // Handle case where cart is not found
+        //  where cart is not found
         throw new NotFoundException(`Cart not found for user with ID ${userId}`);
       }
     }
-}
+
+    async purchaseCart(userId:number,purchaseDto:PurchaseDto){
+      const {cvv,expiryDate,cardNumber}=purchaseDto
+      const user = await this.UserRepository.findOneBy({ id: userId });
+      let cart: Cart = await this.CartRepository.findOne({ where: { user,purchased:false }, relations: ['items', 'items.product'] });
+    const newTransaction =this.TransactionRepository.create({
+      cart,
+      cvv,
+      cardNumber,
+      expiryDate
+    })
+    this.TransactionRepository.save(newTransaction)
+   cart.purchased=true
+   this.CartRepository.save(cart)
+
+    // try {
+    //   const response= await this.httpService.post('https://api.dev.preczn.com/v1/transactions',{
+    //     "merchantId": "mid_test_2csy0hfaqg8d3s4y34b5v2dzhg",
+    //   "type": "sale",
+    //   "payment": {
+    //       "number": cardNumber,
+    //       "cvv": cvv,
+    //       "expiration": expiryDate
+    //   },
+    //   "amount": cart.totalPrice,
+    //   "fee": 0
+    //   })
+      
+    //   return response.pipe(
+    //     tap(response)
+    //   )
+    //   }
+    // catch (error) {
+    //   console.log(error)
+    // }
+  }}
