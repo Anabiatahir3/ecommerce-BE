@@ -21,7 +21,14 @@ export class AuthService {
       async login(user: any) {
         const payload = {  sub: user.id, email:user.email ,role:user.role};
         const access_token = this.jwtService.sign(payload);
-    const expiresIn = this.jwtService.decode(access_token).exp;
+        const expirationTime = this.jwtService.decode(access_token).exp;
+
+        // Get the current time in seconds (Unix epoch time)
+        const currentTime = Math.floor(Date.now() / 1000);
+      
+        // Calculate the duration until expiration (in seconds)
+        const expiresIn = expirationTime - currentTime;
+      
         return {
           access_token: access_token,
           expiresIn:expiresIn
