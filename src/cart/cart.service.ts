@@ -10,7 +10,7 @@ import { Product } from 'src/products/entitites/product.entity';
 import { PurchaseDto } from 'src/dtos/cart/purchaseCart.dto';
 import { Transaction } from './entities/transaction.entity';
 import { HttpService } from '@nestjs/axios/dist';
-import { map ,tap} from 'rxjs';
+import { lastValueFrom, map ,tap} from 'rxjs';
 
 @Injectable()
 export class CartService {
@@ -138,11 +138,9 @@ async deleteCart(userId: number): Promise<void> {
           this.recalculateCart(cart);
           return this.CartRepository.save(cart);
         } else {
-          // when item is not found in the cart
           throw new NotFoundException(`Item with product ID ${productId} not found in the cart`);
         }
       } else {
-        //  where cart is not found
         throw new NotFoundException(`Cart not found for user with ID ${userId}`);
       }
     }
@@ -158,27 +156,36 @@ async deleteCart(userId: number): Promise<void> {
       expiryDate
     })
     this.TransactionRepository.save(newTransaction)
-   cart.purchased=true
-   this.CartRepository.save(cart)
-
-    // try {
-    //   const response= await this.httpService.post('https://api.dev.preczn.com/v1/transactions',{
-    //     "merchantId": "mid_test_2csy0hfaqg8d3s4y34b5v2dzhg",
-    //   "type": "sale",
-    //   "payment": {
-    //       "number": cardNumber,
-    //       "cvv": cvv,
-    //       "expiration": expiryDate
-    //   },
-    //   "amount": cart.totalPrice,
-    //   "fee": 0
-    //   })
-      
-    //   return response.pipe(
-    //     tap(response)
-    //   )
-    //   }
-    // catch (error) {
-    //   console.log(error)
-    // }
+    try {
+      await lastValueFrom(this.httpService.post(
+        'https://api.dev.preczn.com/v1/transactions',
+        {
+          "merchantId": "mid_test_2csy0hfaqg8d3s4y34b5v2dzhg",
+          "type": "sale",
+          "payment": {
+            "number": cardNumber,
+            "cvv": cvv,
+            "expiration": expiryDate
+          },
+          "amount": cart.totalPrice,
+          "fee": 0
+        },
+        {
+          headers: {
+        'x-api-key':"a1a"
+          }
+        }
+      ).pipe(
+map((res)=>{
+  console.log("res",res)
+})
+      )).then(()=>{
+        cart.purchased = true;
+    return this.CartRepository.save(cart);
+      })
+    } catch (error) {
+      console.log(error);
+      throw error; 
+    }
+    
   }}
