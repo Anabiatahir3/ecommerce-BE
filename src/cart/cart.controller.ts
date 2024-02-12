@@ -5,6 +5,7 @@ import { Roles } from 'src/auth/decorators/role.decorator';
 import { ItemDTO } from 'src/dtos/item/item.dto';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { CartService } from './cart.service';
+import { PurchaseDto } from 'src/dtos/cart/purchaseCart.dto';
 
 
 @Controller('cart')
@@ -24,6 +25,13 @@ async getUserCart(@Request()req){
         const userId=req.user.userId
         return this.cartService.addItemToCart(userId,itemDto)
     }
+
+  @Post('/purchase')
+  async purchaseCart(@Request() req, @Body()purchaseDto:PurchaseDto){
+    const userId=req.user.userId
+    return this.cartService.purchaseCart(userId,purchaseDto)
+
+  }
     @Delete('/')
     async removeItemFromCart(@Request()req, @Body() {productId}){
         const userId=req.user.userId

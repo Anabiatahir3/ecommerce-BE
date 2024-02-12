@@ -14,6 +14,7 @@ import { Product } from './products/entitites/product.entity';
 import { CartModule } from './cart/cart.module';
 import { Item } from './cart/entities/item.entity';
 import { Cart } from './cart/entities/cart.entity';
+import { Transaction } from './cart/entities/transaction.entity';
 
 
 
@@ -30,7 +31,7 @@ import { Cart } from './cart/entities/cart.entity';
         username: configService.get('db_username'),
         password: configService.get('password'),
         database: configService.get('database'),
-        entities: [User,Product,Cart,Item],
+        entities: [User,Product,Cart,Item,Transaction],
         synchronize: true,
       }),
       inject: [ConfigService]}),
