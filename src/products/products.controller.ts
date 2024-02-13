@@ -1,4 +1,4 @@
-import { Controller,Post,Get,Body, UseGuards, Query } from '@nestjs/common';
+import { Controller,Post,Get,Body, UseGuards, Query, Param, ParseIntPipe } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from 'src/dtos/products/create-product.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
@@ -28,5 +28,9 @@ export class ProductsController {
     @Get('/single')
     getOneProduct(@Query('name')name:string){
         return this.productService.findProductByName(name)
+    }
+    @Get(':id')
+    getProductById(@Param('id',ParseIntPipe)id:number){
+        return this.productService.getProductById(id)
     }
 }

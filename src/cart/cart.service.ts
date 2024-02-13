@@ -155,7 +155,6 @@ async deleteCart(userId: number): Promise<void> {
       cardNumber,
       expiryDate
     })
-    this.TransactionRepository.save(newTransaction)
     try {
       await lastValueFrom(this.httpService.post(
         'https://api.dev.preczn.com/v1/transactions',
@@ -180,6 +179,7 @@ map((res)=>{
   console.log("res",res)
 })
       )).then(()=>{
+        this.TransactionRepository.save(newTransaction)
         cart.purchased = true;
     return this.CartRepository.save(cart);
       })

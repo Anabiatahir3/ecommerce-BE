@@ -24,4 +24,12 @@ export class ProductsService {
         }
      return product
     }
+    async getProductById(id:number){
+        const product=await this.ProductRepository.findOneBy({id})
+        if (!product){
+         return new BadRequestException("No product")
+
+        }
+        return product
+    }
 }
